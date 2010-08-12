@@ -6,23 +6,23 @@
 	cleaned up a bit.
 	
 	But it's working! You need twisted (http://twistedmatrix.com/) to run it.
-	Just run twistedUlm.py, add "-h" to get a help text about possible arguments
-	to it.
+	Just run twistedUlm.py, add "--help" to get a help text about possible
+	arguments to it.
 	
 	It's preset to work with my Asterisk softmodem on the same host.
 	(http://github.com/proquar/asterisk-BTXVermittlungsstelle)
 	You will find a write-up about the "Ulm Relay Protocol" used there.
 	
-	TwistedUlm fetches cept-hypertext-files from a standard webserver. The
-	preset webserver is http://btx.runningserver.com/ by Philipp Maier.
+	TwistedUlm fetches cept-hypertext-files (called BTX Markup Language) from a
+	standard webserver. The preset webserver is http://btx.runningserver.com/
+	by Philipp Maier.
 	Please see his website:
 	http://runningserver.com/?page=runningserver.content.thelab.bildschirmtrix
-	for more information on cept hypertext. TwistedUlm basically does the same
-	as his mikroPAD device and is compatible to the cept-files he uses in his
-	project.
+	for more information on BTX-ML. TwistedUlm basically does the same as his
+	mikroPAD device and is compatible to the cept-files he uses in his project.
 	
 	I'd like to thank him for putting together all this information regarding
-	Bildschirmtext and profiding his set of cept-html-files.
+	Bildschirmtext and profiding his set of BTX-ML-files.
 	
 	
 	

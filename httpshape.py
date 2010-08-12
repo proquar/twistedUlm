@@ -23,7 +23,7 @@ from basicshape import BasicShape
 from lookandfeel import history, btxInput
 from cept import CHARS
 
-import cepthtml
+from cepthtml import ceptHTML
 
 class HTTPShape( BasicShape ):
 	sendCb = None
@@ -44,26 +44,40 @@ class HTTPShape( BasicShape ):
 		self.history=history(size=100)
 		self.inputParser=btxInput(maxSize=23)
 		
-		self.currentPage=cepthtml.webPage()
+		self.currentPage=ceptHTML()
 		self.ignoreInput=False
+		self.retryHTTP=True
 	
 	def getHTTP(self, wait, pagename, arguments):
 		raise NotImplementedError
 	
 	def processHTTP(self, pagename, arguments, status, html):
-		print "processing",pagename,"status",status
+		#print "processing",pagename,"status",status
 		if status==0:
 			# connection error
-			self.handlePage( cepthtml.parse(self.connectionError) )
+			self.currentPage.parseHTML(self.connectionError)
+			self.sendPage()
 		elif status==200:
-			self.handlePage( cepthtml.parse(html, pagename) )
+			self.currentPage.parseHTML(html, pagename)
+			self.sendPage()
 		else:
-			# whatever, ignore for now
-			self.handlePage( cepthtml.parse(self.otherError1+str(status)+self.otherError2) )
+			#print "error",status
+			self.currentPage.parseHTML(html, pagename)
+			if self.currentPage.parseError:
+				#print "error page doesn't look like cept"
+				if self.retryHTTP:
+					#print "will try to get error-specific page"
+					self.getHTTP(0, str(status), [])
+					self.retryHTTP=False
+				else:
+					#print "last try. sending standard page."
+					self.currentPage.parseHTML(self.otherError1+str(status)+self.otherError2)
+					self.retryHTTP=True
+					self.sendPage()
+			else:
+				self.sendPage()
 	
-	def handlePage(self, page):
-		self.currentPage=page
-		
+	def sendPage(self):
 		self.inputParser.reset()
 		
 		self.sendCb(chr(CHARS['cof']))
@@ -154,7 +168,7 @@ class twistedHTTPShape( HTTPShape ):
 			
 			def error(error):
 				self.processHTTP( pagename, arguments, int(error.value.status), error.value.response)
-				print error.value.__dict__
+				#print error.value.__dict__
 			
 			getPage(url).addCallbacks(callback=succes, errback=error )
 	

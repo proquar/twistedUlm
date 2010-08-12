@@ -31,9 +31,9 @@ from URPprotocol import URPServerFactory
 def main(argv):
 	
 	homepage="index"
-	host="localhost"
+	host=""
 	port=8289
-	verbosity=101
+	verbosity=10
 	httpServer="http://btx.runningserver.com/"
 	httpSuffix=".btx"
 	httpDelimiter="?"

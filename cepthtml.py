@@ -29,6 +29,9 @@ class ceptHTML():
 		self.requestedName=''
 		self.parseError=False
 		
+		self.title=''
+		self.price=0
+		
 		self.links={}
 		
 		self.loadpage=''
@@ -37,6 +40,10 @@ class ceptHTML():
 		self.relayHost=''
 		self.relayPort=-1
 		self.relayTimeout=-1
+		self.relayAfter=''
+		self.relayHeader=False
+		
+		self.nohistory=False
 		
 		#self.inputSize=-1
 		#self.inputTarget=''
@@ -110,6 +117,14 @@ class ceptHTML():
 		head=re.search('<head>(.*)</head>',pagecontent.group(1),re.I|re.S)
 		if head is not None:
 			# print("<head>-tags found")
+			
+			title=re.search('<title\s*?>(.*?)</title>',head.group(1),re.I|re.S)
+			if title != None:
+				self.title=title.group(1)
+			
+			price=re.search('<price\s*?>(.*?)</price>',head.group(1),re.I|re.S)
+			if price != None:
+				self.price=price.group(1)
 				
 			metatags=re.findall('<meta\s+?(.*?)>',head.group(1),re.I|re.S)
 			
@@ -154,6 +169,26 @@ class ceptHTML():
 							try:
 								self.relayTimeout=int(metacontent.group(1))
 								# print("setting relay timeout to %i seconds" %page.relayTimeout)
+							except:
+								pass
+						
+						elif metaname.group(1)=="after_relay":
+							try:
+								self.relayAfter=self._interpretSitename(metacontent.group(1))
+							except:
+								pass
+						
+						elif metaname.group(1)=="relay_header":
+							try:
+								if string.lower(metacontent.group(1))=="true":
+									self.relayHeader=True
+							except:
+								pass
+						
+						elif metaname.group(1)=="nohistory":
+							try:
+								if string.lower(metacontent.group(1))=="true":
+									self.nohistory=True
 							except:
 								pass
 						

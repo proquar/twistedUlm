@@ -26,10 +26,6 @@ from cept import CHARS
 from cepthtml import ceptHTML
 
 class HTTPShape( BasicShape ):
-	sendCb = None
-	closeCb = None
-	userid = None
-	
 	connectionError="<cept><body><cs><aph><apr><apr>Ulm<sp>ist<sp>nicht<sp>erreichbar.</body></cept>"
 	otherError1="<cept><body><cs><aph><apr><apr>Fehler<sp>"
 	otherError2="<sp>ist<sp>aufgetreten.</body></cept>"
@@ -80,6 +76,10 @@ class HTTPShape( BasicShape ):
 	def sendPage(self):
 		self.inputParser.reset()
 		
+		# the protocol handler calls dataSent when the data is sent, we don't want to process
+		# user input while we are sending
+		self.ignoreInput=True
+		
 		self.sendCb(chr(CHARS['cof']))
 		
 		self.sendCb(self.currentPage.body)
@@ -93,15 +93,18 @@ class HTTPShape( BasicShape ):
 		
 		elif self.currentPage.relayTimeout>=0 and self.currentPage.relayHost!='' \
 			and self.currentPage.relayPort>0:
-			print "Relaying request. Not implemented yet" # TODO
+			self.inputParser.addPriorityAction( (btxInput.RELAY, (
+				self.currentPage.relayTimeout,
+				self.currentPage.relayHost,
+				self.currentPage.relayPort,
+				self.currentPage.relayAfter,
+				self.currentPage.relayHeader)) )
 		
 		else:
 			# cursor on
 			self.sendCb(chr(CHARS['con']))
 		
-		# the protocol handler calls dataSent when the data is sent, we don't want to process
-		# user input while we are sending
-		self.ignoreInput=True
+		
 	
 	def dataSent(self):
 		self.ignoreInput=False
@@ -131,25 +134,35 @@ class HTTPShape( BasicShape ):
 				
 			elif instruction == btxInput.NEXT:
 				self.inputParser.reset()
-				self.history.add(self.currentPage.name)
+				if not self.currentPage.nohistory:
+					self.history.add(self.currentPage.name)
 				self.getHTTP(0, self.currentPage.nextPage, [])
 				
 			elif instruction == btxInput.PAGE:
 				self.inputParser.reset()
-				self.history.add(self.currentPage.name)
+				if not self.currentPage.nohistory:
+					self.history.add(self.currentPage.name)
 				self.getHTTP(0, content, [])
 			
 			elif instruction == btxInput.LINK:
 				linkto=self.currentPage.getLink(content)
 				if linkto is not None:
-					self.history.add(self.currentPage.name)
+					if not self.currentPage.nohistory:
+						self.history.add(self.currentPage.name)
 					self.inputParser.reset()
 					self.getHTTP(0, linkto, [])
 			
 			elif instruction == btxInput.DELAYEDPAGE:
 				self.inputParser.reset()
-				self.history.add(self.currentPage.name)
+				if not self.currentPage.nohistory:
+					self.history.add(self.currentPage.name)
 				self.getHTTP(content[0], content[1], [])
+			
+			elif instruction == btxInput.RELAY:
+				self.inputParser.reset()
+				if not self.currentPage.nohistory:
+					self.history.add(self.currentPage.name)
+				self.relayCb(content[0],content[1],content[2],'*'+content[3]+'#',content[4])
 
 
 
@@ -173,8 +186,11 @@ class twistedHTTPShape( HTTPShape ):
 			getPage(url).addCallbacks(callback=succes, errback=error )
 	
 	def connectionLost(self, reason):
-		if self.gethttpschedule.active():
-			self.gethttpschedule.cancel()
+		try:
+			if self.gethttpschedule.active():
+				self.gethttpschedule.cancel()
+		except(AttributeError):
+			pass
 		
 		HTTPShape.connectionLost(self, reason)
 

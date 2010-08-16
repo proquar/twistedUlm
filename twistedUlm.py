@@ -25,7 +25,7 @@ import sys, getopt
 
 from twisted.internet import reactor
 
-from URPprotocol import URPServerFactory
+from CeptServer import CeptServerFactory
 
 
 def main(argv):
@@ -33,12 +33,12 @@ def main(argv):
 	homepage="index"
 	host=""
 	port=8289
-	verbosity=10
+	verbosity=1
 	httpServer="http://btx.runningserver.com/"
 	httpSuffix=".btx"
 	httpDelimiter="?"
 
-	version="0.3"
+	version="0.4"
 
 	
 	print "twistedUlm HTTP Server",version
@@ -98,7 +98,7 @@ def main(argv):
 		print "Will get pages in the form of %sfoo%s%sbar."\
 			%(httpServer,httpSuffix,httpDelimiter)
 	
-	factory = URPServerFactory("http", verbosity, httpServer, httpSuffix, httpDelimiter)
+	factory = CeptServerFactory("http", verbosity, httpServer, httpSuffix, httpDelimiter)
 	
 	reactor.listenTCP(port, factory, interface=host)
 	

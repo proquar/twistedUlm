@@ -45,6 +45,7 @@ class btxInput():
 	PAGE=0
 	LINK=1
 	DELAYEDPAGE=2
+	RELAY=3
 	
 	BACKSPACE=chr(CHARS['apb'])+chr(CHARS['sp'])+chr(CHARS['apb']) # back-space-back
 	RELOAD='*09#'

@@ -13,8 +13,13 @@ class Relay(Protocol):
 		self.relay=None
 	
 	def connectionMade(self):
-		if self.header:
-			self.send(header)
+		if self.sendHeader:
+			if header[-4:]=="\r\n\r\n":
+				self.send(header)
+			elif header[-2:]=="\r\n":
+				self.send(header+"\r\n")
+			else:
+				self.send(header+"\r\n\r\n")
 	
 	def dataReceived(self, data):
 		self.putDataCb(data)

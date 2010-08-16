@@ -35,7 +35,7 @@ class CeptServerProtocol(LineReceiver):
 		self.shape.closeCb = self.close
 		self.shape.relayCb = self.relayConnection
 		
-		self.version = 0
+		self.version = "0"
 		self.txspeed = 120.0
 		self.rxspeed = 7.5
 		
@@ -67,8 +67,13 @@ class CeptServerProtocol(LineReceiver):
 		if time>0:
 			callLater(time, self.relayConnection, 0, host, port, commandAfter, sendHeader)
 		else:
+			header  = "Version: %s\r\n" % self.version
+			header += "TXspeed: %.1f\r\n" % self.txspeed
+			header += "RXspeed: %.1f\r\n" % self.rxspeed
+			header += "UserID: %s\r\n" % self.userid
+			
 			self.commandAfterRelay=commandAfter
-			self.relay=RelayFactory( self.relayClosed, self.send )
+			self.relay=RelayFactory( self.relayClosed, self.send, sendHeader, header )
 			self.relayData=True
 			self.relayConnector=connectTCP(host, int(port), self.relay)
 	

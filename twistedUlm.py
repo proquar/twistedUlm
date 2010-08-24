@@ -33,7 +33,7 @@ def main(argv):
 	homepage="index"
 	host=""
 	port=8289
-	verbosity=1
+	verbosity=2
 	httpServer="http://btx.runningserver.com/"
 	httpSuffix=".btx"
 	httpDelimiter="?"
@@ -106,6 +106,9 @@ def main(argv):
 		print "Starting server..."
 	
 	reactor.run()
+	
+	if verbosity>=1:
+		print "Done."
 
 if __name__ == "__main__":
     main(sys.argv[1:])

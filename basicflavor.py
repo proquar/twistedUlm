@@ -22,7 +22,14 @@
 from twisted.internet.reactor import callLater
 from cept import CHARS
 
-class BasicShape():
+class BasicFlavor():
+	"""
+	Inherit from this class to create new server flavors. You have several
+	callback methods to the CeptServer:
+	sendCb(str): used to send data to the user
+	closeCb(): close the connection
+	relayCb(host, port, commandAfter, sendHeader): relay a connection
+	"""
 	
 	sendCb = None
 	closeCb = None
@@ -30,29 +37,50 @@ class BasicShape():
 	userid = None
 	
 	def hello(self):
+		"""
+		Called when the connection is established and header and user id is
+		parsed. May be used to send a welcome message.
+		"""
 		pass
 	
 	def write(self, data):
-		pass
-	
-	def connectionLost(self, reason):
+		"""
+		Data received from the user is passed to this function.
+		"""
 		pass
 	
 	def dataSent(self):
+		"""
+		Called when all data passed to self.sendCb() has been sent. (According
+		the estimated speed of the user's connection)
+		"""
+		pass
+	
+	def connectionLost(self, reason):
+		"""
+		Connection was lost, either because self.closeCb() was called or the
+		user hang up.
+		"""
 		pass
 
-class RelayTest ( BasicShape ):
+class RelayTest ( BasicFlavor ):
+	"""
+	Simple server-flavor to try to relay a connection.
+	"""
 	def hello(self):
 		self.sendCb("Trying to connect you to Ringworld...")
-		self.relayCb(1, "rw1.m63.co.uk", 23, "*done#")
+		self.relayCb("rw1.m63.co.uk", 23, "*done#")
 		
 	def write(self, data):
 		if data=="*done#":
 			self.sendCb("Goodbye.")
 			self.closeCb()
 
-class DummyShape( BasicShape ):
-	
+class DummyFlavor( BasicFlavor ):
+	"""
+	I used this to see what kind of user id I could expect. It sends a
+	greeting to the user, several alphabets and then closes the connection.
+	"""
 	def __init__(self):
 		self.elist=[]
 		self.olist=[]

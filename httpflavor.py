@@ -19,13 +19,18 @@
 #    along with twistedUlm.  If not, see <http://www.gnu.org/licenses/>.
 ###############################################################################
 
-from basicshape import BasicShape
+from basicflavor import BasicFlavor
 from lookandfeel import history, btxInput
 from cept import CHARS
 
 from cepthtml import ceptHTML
 
-class HTTPShape( BasicShape ):
+class HTTPFlavor( BasicFlavor ):
+	"""
+	This specific server-flavor requests "BtxML"-encoded Webpages according to
+	the user's input from a webserver. It does some error handling for
+	connection- and HTTP-errors.
+	"""
 	connectionError="<cept><body><cs><aph><apr><apr>Ulm<sp>ist<sp>nicht<sp>erreichbar.</body></cept>"
 	otherError1="<cept><body><cs><aph><apr><apr>Fehler<sp>"
 	otherError2="<sp>ist<sp>aufgetreten.</body></cept>"
@@ -40,65 +45,97 @@ class HTTPShape( BasicShape ):
 		self.history=history(size=100)
 		self.inputParser=btxInput(maxSize=23)
 		
-		self.currentPage=ceptHTML()
-		self.ignoreInput=False
-		self.retryHTTP=True
+		self.currentPage=ceptHTML()		# this holds the currently parsed page
+		self.ignoreInput=False			# locks the interpretation of input
+		self.retryOnError=True			# retry getting error-pages only once
 	
 	def getHTTP(self, wait, pagename, arguments):
+		"""
+		This has to be implemented in a class inherited from this one. So this
+		class can stay free of twisted-specific stuff.
+		"""
 		raise NotImplementedError
 	
 	def processHTTP(self, pagename, arguments, status, html):
+		"""
+		This is called when getHTTP was finished loading the website. Status is
+		the standard HTTP response code or 0 for a connection error. This also
+		is the place where the error handling happens, this is done in two
+		stages: either the error-page returned by the server is a valid "BtxML"
+		document, then we display it. Or it's not, then we try to get the
+		error-specific page (eg. 404.btx), if this isn't successfull either we
+		display a standard error-message.
+		"""
+		
 		#print "processing",pagename,"status",status
+		
+		if not self.retryOnError:
+			# this is a error-page, set the correct name, so it's not 404
+			# so we can make sure the original pagename is inserted into the
+			# history and the correct page is reloaded
+			pagename=self.currentPage.name
+		
 		if status==0:
 			# connection error
 			self.currentPage.parseHTML(self.connectionError)
+			self.retryOnError=True
 			self.sendPage()
 		elif status==200:
 			self.currentPage.parseHTML(html, pagename)
+			self.retryOnError=True
 			self.sendPage()
 		else:
-			#print "error",status
+			# test if webserver returned a "BtxML" document
 			self.currentPage.parseHTML(html, pagename)
 			if self.currentPage.parseError:
-				#print "error page doesn't look like cept"
-				if self.retryHTTP:
-					#print "will try to get error-specific page"
+				if self.retryOnError:
+					# it didn't, so we try to get the error-specific page
 					self.getHTTP(0, str(status), [])
-					self.retryHTTP=False
+					self.retryOnError=False
 				else:
-					#print "last try. sending standard page."
+					# wasn't successfull either, abort and show a simple page
 					self.currentPage.parseHTML(self.otherError1+str(status)+self.otherError2)
-					self.retryHTTP=True
+					self.retryOnError=True
 					self.sendPage()
 			else:
+				self.retryOnError=True
 				self.sendPage()
 	
 	def sendPage(self):
+		"""
+		This is called by processHTTP. It sends the currently loaded page to
+		the terminal.
+		"""
+		
 		self.inputParser.reset()
 		
 		# the protocol handler calls dataSent when the data is sent, we don't want to process
 		# user input while we are sending
 		self.ignoreInput=True
 		
-		self.sendCb(chr(CHARS['cof']))
+		self.sendCb(chr(CHARS['cof']))	# curser off
 		
 		self.sendCb(self.currentPage.body)
 		self.sendCb(chr(CHARS['dct']))
 		
+		
 		if self.currentPage.loadpageTimeout>=0 and self.currentPage.loadpage!='':
+			# the current page requests a page forward, we put it into the inputparser to be handled when the current page is sent
 			self.inputParser.addPriorityAction( (btxInput.DELAYEDPAGE, (self.currentPage.loadpageTimeout, self.currentPage.loadpage)) )
 			
 		elif self.currentPage.disconnect>=0:
+			# current page is a disconnect-page, disconnect in X seconds
 			self.closeCb(self.currentPage.disconnect)
 		
-		elif self.currentPage.relayTimeout>=0 and self.currentPage.relayHost!='' \
-			and self.currentPage.relayPort>0:
-			self.inputParser.addPriorityAction( (btxInput.RELAY, (
-				self.currentPage.relayTimeout,
+		elif self.currentPage.relayHost!='' and self.currentPage.relayPort>0:
+			# relay the connection to a remote host, we just do this immediately
+			self.relayCb(
 				self.currentPage.relayHost,
 				self.currentPage.relayPort,
 				self.currentPage.relayAfter,
-				self.currentPage.relayHeader)) )
+				self.currentPage.relayHeader)
+			self.inputParser.reset()
+			self.ignoreInput=False
 		
 		else:
 			# cursor on
@@ -107,7 +144,12 @@ class HTTPShape( BasicShape ):
 		
 	
 	def dataSent(self):
+		# remove the lock from the inputparser, input still was passed to it, 
+		# but we didn't interpret it
 		self.ignoreInput=False
+		
+		# poke the input handler to interpret input, that was arrived while
+		# we were sending
 		self.write('')
 	
 	def hello(self):
@@ -129,14 +171,16 @@ class HTTPShape( BasicShape ):
 			elif instruction == btxInput.PREVIOUS:
 				previoussite=self.history.get()
 				if previoussite is not None:
+					# do nothing when there's no previous site
 					self.inputParser.reset()
 					self.getHTTP(0, previoussite, [])
 				
 			elif instruction == btxInput.NEXT:
-				self.inputParser.reset()
-				if not self.currentPage.nohistory:
-					self.history.add(self.currentPage.name)
-				self.getHTTP(0, self.currentPage.nextPage, [])
+				if self.currentPage.nextPage != '':
+					self.inputParser.reset()
+					if not self.currentPage.nohistory:
+						self.history.add(self.currentPage.name)
+					self.getHTTP(0, self.currentPage.nextPage, [])
 				
 			elif instruction == btxInput.PAGE:
 				self.inputParser.reset()
@@ -153,23 +197,22 @@ class HTTPShape( BasicShape ):
 					self.getHTTP(0, linkto, [])
 			
 			elif instruction == btxInput.DELAYEDPAGE:
+				# this was the special instruction we added in sendPage()
 				self.inputParser.reset()
 				if not self.currentPage.nohistory:
 					self.history.add(self.currentPage.name)
 				self.getHTTP(content[0], content[1], [])
-			
-			elif instruction == btxInput.RELAY:
-				self.inputParser.reset()
-				if not self.currentPage.nohistory:
-					self.history.add(self.currentPage.name)
-				self.relayCb(content[0],content[1],content[2],'*'+content[3]+'#',content[4])
 
 
 
 from twisted.web.client import getPage
 from twisted.internet.reactor import callLater
 
-class twistedHTTPShape( HTTPShape ):
+class twistedHTTPFlavor( HTTPFlavor ):
+	"""
+	This just implements the getHTTP-part using twisted.
+	"""
+	
 	def getHTTP(self, wait, pagename, arguments):
 		if wait>0:
 			self.gethttpschedule = callLater(wait, self.getHTTP, 0, pagename, arguments)
@@ -192,6 +235,6 @@ class twistedHTTPShape( HTTPShape ):
 		except(AttributeError):
 			pass
 		
-		HTTPShape.connectionLost(self, reason)
+		HTTPFlavor.connectionLost(self, reason)
 
 

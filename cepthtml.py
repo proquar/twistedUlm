@@ -24,13 +24,14 @@ import cept
 import re, string
 
 class ceptHTML():
+	"""
+	Here a "BtxML" page is parsed into a nice structure.
+	"""
+	
 	def __init__(self,name=''):
 		self.name=name
 		self.requestedName=''
 		self.parseError=False
-		
-		self.title=''
-		self.price=0
 		
 		self.links={}
 		
@@ -39,7 +40,6 @@ class ceptHTML():
 		
 		self.relayHost=''
 		self.relayPort=-1
-		self.relayTimeout=-1
 		self.relayAfter=''
 		self.relayHeader=False
 		
@@ -51,23 +51,35 @@ class ceptHTML():
 		
 		self.nextPage=''
 		
-		self.disconnect=-1
+		self.disconnect=-1	# this is a timeout
 		
 		self.body=''
 	
 	def reset(self, name=''):
+		"""
+		Clear all previously res values.
+		"""
 		self.__init__(name)
 	
 	def _addLink(self,name,link):
 		self.links[name]=link
 	
 	def getLink(self,name):
+		"""
+		This can be used to check if the current user input is a link to
+		another page, it returns None if it isn't.
+		"""
 		try:
 			return self.links[name]
 		except:
 			return None
 	
 	def _translateTag(self,tag):
+		"""
+		Used by parseHTML to translate <tags> into single chars, Tags may be
+		any of the characters specified in cept.py or hexadecimal values in the
+		form of <0xXX>
+		"""
 		tag=tag.group(1)
 		try:
 			if tag[0:2]=='0x' or tag[0:2]=='0X':
@@ -83,28 +95,36 @@ class ceptHTML():
 			return "<"+tag+">"
 		
 	def _interpretSitename(self,name):
-			try:
-				name=string.strip(str(name),string.whitespace+"\"'")
-			except:
-				name=''
-			name=string.lstrip(name,'*')
-			name=string.rstrip(name,'#')
-			return name
+		"""
+		This just removes whitespaces, *s and #s from the beginning and end of
+		a string.
+		"""
+		try:
+			name=string.strip(str(name),string.whitespace+"\"'")
+		except:
+			name=''
+		name=string.lstrip(name,'*')
+		name=string.rstrip(name,'#')
+		return name
 	
 	def _parseError(self):
+		"""
+		Page couldn't be parsed, so set some values to standard-values.
+		"""
 		self.parseError=True
 		self.nextPage='0'
 		self.body="The page named "+str(self.name)+" cannot be processed.\nPress # or *page# to continue: "
 	
 	def parseHTML(self, content, pagename=''):
 		"""
-		highly inefficient parsing using regular expressions at the moment,
+		V inefficient parsing using regular expressions at the moment,
 		I'll fix that later.
 		"""
 		self.reset()
 		
 		self.name=pagename
 		
+		# pages must be enclosed by cept-tags
 		pagecontent = re.search('<cept>(.*)</cept>',content,re.I|re.S)
 		if pagecontent == None:
 			# print("ParseError: missing <cept>-tags")
@@ -117,14 +137,6 @@ class ceptHTML():
 		head=re.search('<head>(.*)</head>',pagecontent.group(1),re.I|re.S)
 		if head is not None:
 			# print("<head>-tags found")
-			
-			title=re.search('<title\s*?>(.*?)</title>',head.group(1),re.I|re.S)
-			if title != None:
-				self.title=title.group(1)
-			
-			price=re.search('<price\s*?>(.*?)</price>',head.group(1),re.I|re.S)
-			if price != None:
-				self.price=price.group(1)
 				
 			metatags=re.findall('<meta\s+?(.*?)>',head.group(1),re.I|re.S)
 			
@@ -162,13 +174,6 @@ class ceptHTML():
 								# print("setting relay to %s:%i"%(host,int(port)))
 								self.relayHost=host
 								self.relayPort=int(port)
-							except:
-								pass
-						
-						elif metaname.group(1)=="relay_timeout":
-							try:
-								self.relayTimeout=int(metacontent.group(1))
-								# print("setting relay timeout to %i seconds" %page.relayTimeout)
 							except:
 								pass
 						
@@ -223,6 +228,7 @@ class ceptHTML():
 									# print("adding link from %s to %s" %(linkfrom,linkto))
 									self._addLink(linkfrom,linkto)
 		
+		# the body is just plain text and cept-commands, cept-command-characters
 		body=re.search('<body>(.*)</body>',pagecontent.group(1),re.I|re.S)
 		if body is not None:
 			# print("<body>-tags found")

@@ -1,34 +1,79 @@
 
- twistedUlm - "Page Assembler Device", talks with BTX terminals
+ twistedUlm - A BtxML parser
 ===============================================================================
 
-	Not yet ready, the code is still largely uncommented and really needs to be
-	cleaned up a bit.
+	TwistedUlm fetches cept-hypertext-files (called Btx Markup Language) from a
+	standard webserver to be displayed on old dumb terminals or terminal
+	emulators.
 	
-	But it's working! You need twisted (http://twistedmatrix.com/) to run it.
-	Just run twistedUlm.py, add "--help" to get a help text about possible
-	arguments to it.
+	You need twisted (http://twistedmatrix.com/) to run it.	Just run
+	twistedUlm.py, add "--help" to get a help text about possible arguments to
+	it.
 	
-	It's preset to work with my Asterisk softmodem on the same host.
-	(http://github.com/proquar/asterisk-BTXVermittlungsstelle)
-	You will find a write-up about the "Ulm Relay Protocol" used there.
+	It's preset to work with my Asterisk softmodem
+	(http://github.com/proquar/asterisk-BTXVermittlungsstelle). You will find a
+	write-up about the "Ulm Relay Protocol" used there.
+
+
+
+ BtxML?
+-------------------------------------------------------------------------------
+
+	We get pages from a standard webserver. The preset webserver is
+	http://btx.runningserver.com/ by Philipp Maier, who originally thought of
+	those BtxML pages for his mikroPAD project:
+	http://runningserver.com/?page=runningserver.content.thelab.mikropad
 	
-	TwistedUlm fetches cept-hypertext-files (called BTX Markup Language) from a
-	standard webserver. The preset webserver is http://btx.runningserver.com/
-	by Philipp Maier.
-	Please see his website:
+	BtxML pages have -like HTML- a header and a body, which are enclosed by
+	<head></head> and <body></body> tags. The whole page is enclosed by <cept>
+	</cept> tags.
+	Header and body are both optional. The header may include serveral <meta>
+	tags with "name" and "content" arguments:
+		<meta name="..." content="...">
+	
+	In the original implementation names are the following special keywords:
+	* load_page          A page to load after
+	* load_timeout       seconds.
+	* next_page          The page that is loaded when the user presses #.
+	* disconnect         Closes connection after X seconds.
+	* hyperlinks         Pairs of number*page#, separated by ",".
+	
+	Additionally twistedUlm supports the following names:
+	* nohistory          To exclude a page from being put into the history.
+	* relay              A host:port pair to relay the connection to.
+	* relay_header       "true" to send the header.
+	* after_relay        Page that is fetched when the relay is closed.
+	
+	The body consists of printable characters and special CEPT control
+	characters. Whitespaces are ignored (User <sp> for a single space).
+	CEPT control characters look like single HTML tags, eg. <dbs> to enable
+	double size characters. Furthermore twistedUlm supports hexadecimal
+	characters in the form of <0x..>.
+	See cept.py for possible characters.
+	
+	BtxML pages may also contain standard HTML-comments in the form of
+	<!-- ... -->.
+
+
+
+ Thanks + More information
+-------------------------------------------------------------------------------
+
+	Philipp Maier originally built a device called "mikroPAD" to be connected
+	directly to some of those old terminals instead of a modem. TwistedUlm does
+	basically does the same as his device and is fully compatible to his BtxML
+	pages.
+	He has a lot of information regarding BtxML and Bildschirmtext in general
+	on his website:
 	http://runningserver.com/?page=runningserver.content.thelab.bildschirmtrix
-	for more information on BTX-ML. TwistedUlm basically does the same as his
-	mikroPAD device and is compatible to the cept-files he uses in his project.
-	
 	I'd like to thank him for putting together all this information regarding
-	Bildschirmtext and profiding his set of BTX-ML-files.
+	Bildschirmtext and providing his set of BtxML-files.
 	
-	
-	
-	More information will be added later...
-
-
+	To write Btx pages you should know the original standards, they are
+	available at http://pda.etsi.org/pda/queryform.asp. The relevant standards
+	are ETS 300 072 - ETS 300 076.
+	But you really can send anything to those terminals, it could also be used
+	to create a Minitel or Prestel compatible service.
 
 
 

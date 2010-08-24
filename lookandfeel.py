@@ -22,31 +22,52 @@
 from cept import CHARS
 
 import string
+from collections import deque
 
 class history():
+	"""
+	This is supposed to be used as a history of pages visited by the user.
+	It just holds a list of strings (page names).
+	"""
 	def __init__(self,size=50):
-		self.size=50
-		self.history=[]
+		self.history=deque(maxlen=size)
 		
 	def add(self,entry):
+		"""
+		Doesn't insert anything into the history when it's empty or the same
+		as the last entry.
+		"""
 		if string.strip(str(entry)) != '':
-			self.history.append(string.strip(str(entry)))
+			if len(self.history)==0 or string.strip(str(entry)) != self.history[-1]:
+				self.history.append(string.strip(str(entry)))
 			return True
 		return False
 	
 	def get(self):
 		try:
 			return self.history.pop()
-		except:
+		except (IndexError):
 			return None
 
 class btxInput():
+	"""
+	To provide a consistent look and feel this should be used to interpret user
+	input. Btx (and many other systems) had some special instructions:
+		*#		previous page (in history)
+		#		next page (for multi-page documents or back to some main-menu)
+		*XXX#	user requests the specified page (a page)
+		XXX		another sub-page of the current page (a link)
+		...**	delete whole input
+	
+	Because Teletex-terminals are dumb terminals the user's input also is
+	checked and echoed back to the terminal.
+	"""
 	
 	PAGE=0
 	LINK=1
 	DELAYEDPAGE=2
-	RELAY=3
 	
+	#BACKSPACE=chr(CHARS['sp'])+chr(CHARS['apb'])+chr(CHARS['apb']) # space+back+back
 	BACKSPACE=chr(CHARS['apb'])+chr(CHARS['sp'])+chr(CHARS['apb']) # back-space-back
 	RELOAD='*09#'
 	NEXT='#'
@@ -61,26 +82,32 @@ class btxInput():
 		self.verbose=verbose
 		self.priorityAction=None
 	
+	
 	def putChars(self,chars):
+		"""
+		For convenience, a string passed to this function is split into single
+		chars and passed as a number to putChar()
+		"""
 		ret=""
 		for c in chars:
 			ret+=self.putChar(ord(c))
 		return ret
 	
+	
 	def putChar(self,char):
 		"""
-		This functions inserts user input into the input buffer. Since we need to echo user-input
-		we do some simple checks here and return one or more characters to be send to the user as
-		soon as possible.
+		This functions inserts user input into the input buffer. Since we need
+		to echo user-input we do some simple checks here and return one or
+		more characters to be send to the user as soon as possible.
 		"""
 		
-		if char == ord('*'):			#interpret normal asterisk and hash-sign as 
-			char = CHARS['ini']	#init/term-sign for convenience-reasons
+		if char == ord('*'):			# interpret normal asterisk and hash-sign as 
+			char = CHARS['ini']			# init/term-sign for convenience-reasons
 		elif char == ord('#'):
 			char = CHARS['ter']
 		
 		# normal printable characters are simply added to the buffer
-		# except that the input was already terminated or the buffer is full
+		# except when the input was already terminated or the buffer is full
 		if char >= 0x20 and char <= 0x7e:
 			if not self.terminated:
 				if len(self.currentInstruction) < self.maxSize:
@@ -157,10 +184,21 @@ class btxInput():
 		else:
 			return ''
 	
+	
 	def addPriorityAction(self,action):
+		"""
+		May be used by a server flavor to insert an action with high priority,
+		which is then returned by getInstruction() instead of a user
+		instruction.
+		"""
 		self.priorityAction=action
 	
+	
 	def getInstruction(self):
+		"""
+		Returns the priority action if set. Else it returns the interpretation
+		of the user's input in the form of a tuple of (instruction, content).
+		"""
 		if self.priorityAction!=None:
 			action=self.priorityAction
 			self.priorityAction=None
@@ -177,22 +215,12 @@ class btxInput():
 		else:
 			return (self.LINK, self.currentInstruction)
 	
-	#def checkLink(self, links):
-		#if self.startsWithAsterisk:
-			#return None
-		
-		#if isinstance(links,list):
-			#for link in links:
-				#if link==self.currentInstruction[:len(link)]:
-					#return link
-		#elif isinstance(links,str) or isinstance(links,int):
-			#links=str(links)
-			#if links==self.currentInstruction[:len(links)]:
-				#return links
-		
-		#return None
 	
 	def reset(self):
+		"""
+		Clears the current instruction buffer. Should be called when a new page
+		has been loaded.
+		"""
 		self.currentInstruction=""
 		self.terminated=False
 		self.startsWithAsterisk=False

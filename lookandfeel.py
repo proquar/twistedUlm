@@ -30,7 +30,7 @@ class history():
 	It just holds a list of strings (page names).
 	"""
 	def __init__(self,size=50):
-		self.history=deque(maxlen=size)
+		self.history=deque(size)
 		
 	def add(self,entry):
 		"""
